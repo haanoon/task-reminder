@@ -3,12 +3,15 @@ mod db;
 mod style;
 mod window;
 mod commands;
+mod notifications;
 #[path = "window/editor.rs"]
 mod editor;
 #[path = "window/sidebar.rs"]
 mod sidebar;
 #[path = "window/search.rs"]
 mod search;
+#[path = "window/settings.rs"]
+mod settings;
 
 use adw::prelude::*;
 use gtk::{gdk, gio};
@@ -30,12 +33,15 @@ fn main() {
         .flags(gio::ApplicationFlags::HANDLES_COMMAND_LINE)
         .build();
 
-    // ── Startup: load CSS & force dark theme ──────────────────────────
+    // ── Startup: load CSS, force dark theme, spawn notifications ──────
     app.connect_startup(|_| {
         load_css();
 
         let sm = adw::StyleManager::default();
         sm.set_color_scheme(adw::ColorScheme::ForceDark);
+
+        // Launch background notification scheduler
+        notifications::spawn(config::Config::database_path());
     });
 
     // ── Command-line: toggle visibility from a second process ─────────

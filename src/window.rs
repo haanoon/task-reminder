@@ -150,11 +150,16 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
 
     // Search Toggle button
     let search_toggle_btn = gtk::Button::from_icon_name("system-search-symbolic");
-    search_toggle_btn.set_tooltip_text(Some("Search tasks"));
+    search_toggle_btn.set_tooltip_text(Some("Search tasks (Ctrl+F)"));
+
+    // Settings button
+    let settings_btn = gtk::Button::from_icon_name("preferences-system-symbolic");
+    settings_btn.set_tooltip_text(Some("Settings (Ctrl+,)"));
 
     header_box.append(&sidebar_toggle_btn);
     header_box.append(&title_vbox);
     header_box.append(&search_toggle_btn);
+    header_box.append(&settings_btn);
     main_box.append(&header_box);
 
     // Search Bar Widget Overlay
@@ -387,6 +392,19 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     });
     window.add_action(&act_toggle_sidebar);
 
+    // ── win.show-settings ────────────────────────────────────────
+    let act_show_settings = gio::SimpleAction::new("show-settings", None);
+    act_show_settings.connect_activate({
+        let win = window.clone();
+        move |_, _| {
+            let cfg = crate::config::Config::load();
+            crate::settings::show(win.upcast_ref(), cfg, |_new_cfg| {
+                // Config saved to disk by the dialog — live reload not wired yet
+            });
+        }
+    });
+    window.add_action(&act_show_settings);
+
     // Set accelerators on Application
     if let Some(app) = window.application() {
         app.set_accels_for_action("win.undo", &["<Control>z"]);
@@ -394,6 +412,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         app.set_accels_for_action("win.toggle-search", &["<Control>f"]);
         app.set_accels_for_action("win.show-add-task", &["<Control>n"]);
         app.set_accels_for_action("win.toggle-sidebar", &["<Control>l"]);
+        app.set_accels_for_action("win.show-settings", &["<Control>comma"]);
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -405,6 +424,14 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         let win = window.clone();
         move |_| {
             fire_action(&win, "show-add-task");
+        }
+    });
+
+    // Settings button click
+    settings_btn.connect_clicked({
+        let win = window.clone();
+        move |_| {
+            fire_action(&win, "show-settings");
         }
     });
 
