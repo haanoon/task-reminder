@@ -33,9 +33,7 @@ window.background {
     background-color: rgba(10, 8, 20, 0.88);
     border-radius: 20px;
     border: 1px solid rgba(160, 130, 220, 0.12);
-    box-shadow:
-        0 4px 40px rgba(0, 0, 0, 0.55),
-        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: 0 4px 40px rgba(0, 0, 0, 0.55);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -219,7 +217,7 @@ checkbutton:checked check {
 }
 
 .task-delete:hover {
-    opacity: 1 !important;
+    opacity: 1;
     background-color: rgba(208, 136, 152, 0.12);
 }
 
@@ -313,7 +311,7 @@ checkbutton:checked check {
     box-shadow:
         0 6px 20px rgba(180, 158, 224, 0.35),
         0 2px 6px rgba(0, 0, 0, 0.3);
-    transition: all 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 240ms ease;
 }
 
 .fab:hover {
@@ -321,11 +319,10 @@ checkbutton:checked check {
     box-shadow:
         0 8px 26px rgba(200, 180, 240, 0.45),
         0 2px 8px rgba(0, 0, 0, 0.35);
-    transform: scale(1.06);
 }
 
 .fab:active {
-    transform: scale(0.94);
+    background-color: #a08acc;
     transition-duration: 100ms;
 }
 
