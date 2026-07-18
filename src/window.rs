@@ -263,7 +263,23 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     fab.set_tooltip_text(Some("Add task"));
     overlay.add_overlay(&fab);
 
-    main_box.append(&overlay);
+    // ── Privacy Stack: tasks hidden until mouse enters the panel ──────
+    let content_stack = gtk::Stack::new();
+    content_stack.set_transition_type(gtk::StackTransitionType::Crossfade);
+    content_stack.set_transition_duration(220);
+    content_stack.set_vexpand(true);
+
+    // Page 1: privacy hint (shown by default)
+    let privacy_hint = build_privacy_hint();
+    content_stack.add_named(&privacy_hint, Some("privacy"));
+
+    // Page 2: actual task overlay
+    content_stack.add_named(&overlay, Some("tasks"));
+
+    // Start on the privacy page
+    content_stack.set_visible_child_name("privacy");
+
+    main_box.append(&content_stack);
 
     let content_nav_page = adw::NavigationPage::new(&main_box, "Tasks");
     split_view.set_content(Some(&content_nav_page));
@@ -437,7 +453,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         }
     });
 
-    // ── Window-level Escape → hide the panel (only when no entry is open)
+    // ── Window-level Escape → hide the panel
     window.add_controller({
         let win = window.clone();
         let ec = gtk::EventControllerKey::new();
@@ -450,6 +466,24 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
             glib::Propagation::Proceed
         });
         ec
+    });
+
+    // ── Hover-to-reveal: show tasks only when mouse is over the panel —
+    window.add_controller({
+        let stack = content_stack.clone();
+        let mc = gtk::EventControllerMotion::new();
+        mc.connect_enter(move |_, _, _| {
+            stack.set_visible_child_name("tasks");
+        });
+        mc
+    });
+    window.add_controller({
+        let stack = content_stack.clone();
+        let mc = gtk::EventControllerMotion::new();
+        mc.connect_leave(move |_| {
+            stack.set_visible_child_name("privacy");
+        });
+        mc
     });
 
     // ══════════════════════════════════════════════════════════════════
@@ -548,6 +582,29 @@ fn build_empty_state() -> gtk::Box {
 
     let sub = gtk::Label::new(Some("Tap + to add your first task"));
     sub.add_css_class("empty-subtitle");
+    container.append(&sub);
+
+    container
+}
+
+/// Screen shown when tasks are hidden for privacy.
+fn build_privacy_hint() -> gtk::Box {
+    let container = gtk::Box::new(gtk::Orientation::Vertical, 4);
+    container.add_css_class("privacy-hint");
+    container.set_halign(gtk::Align::Center);
+    container.set_valign(gtk::Align::Center);
+    container.set_vexpand(true);
+
+    let icon = gtk::Label::new(Some("🔒"));
+    icon.add_css_class("privacy-icon");
+    container.append(&icon);
+
+    let title = gtk::Label::new(Some("Workspace Private"));
+    title.add_css_class("privacy-title");
+    container.append(&title);
+
+    let sub = gtk::Label::new(Some("Hover to reveal tasks"));
+    sub.add_css_class("privacy-subtitle");
     container.append(&sub);
 
     container

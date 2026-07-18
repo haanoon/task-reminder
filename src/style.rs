@@ -404,4 +404,31 @@ separator {
     min-height: 1px;
     margin: 0 12px;
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Privacy Hint Screen (Hover to Reveal)
+   ══════════════════════════════════════════════════════════════════════ */
+.privacy-hint {
+    padding: 60px 24px;
+}
+
+.privacy-icon {
+    font-size: 42px;
+    margin-bottom: 16px;
+    color: #b49ee0;
+    opacity: 0.65;
+}
+
+.privacy-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ede8f8;
+    letter-spacing: -0.1px;
+}
+
+.privacy-subtitle {
+    font-size: 13px;
+    color: #7868a0;
+    margin-top: 6px;
+}
 "#;
