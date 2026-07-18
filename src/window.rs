@@ -70,6 +70,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     split_view.set_min_sidebar_width(240.0);
     split_view.set_max_sidebar_width(280.0);
     split_view.set_collapsed(true); // sidebar hidden by default
+    split_view.set_show_content(true); // show content page by default when collapsed
 
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     main_box.add_css_class("main-container");
@@ -83,9 +84,11 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         {
             let state = state.clone();
             let win = window.clone();
+            let sv = split_view.clone();
             move |idx| {
                 state.borrow_mut().current_list_idx = idx;
                 fire_action(&win, "refresh-tasks");
+                sv.set_show_content(true);
             }
         },
         {
@@ -140,10 +143,9 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     sidebar_toggle_btn.connect_clicked({
         let sv = split_view.clone();
         move |btn| {
-            let collapsed = sv.is_collapsed();
-            sv.set_collapsed(!collapsed);
-            // Update icon to reflect state
-            let icon = if collapsed { "sidebar-show-right-symbolic" } else { "view-list-symbolic" };
+            let shows = sv.shows_content();
+            sv.set_show_content(!shows);
+            let icon = if shows { "sidebar-show-right-symbolic" } else { "view-list-symbolic" };
             btn.set_icon_name(icon);
         }
     });
@@ -384,9 +386,9 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         let sv = split_view.clone();
         let btn = sidebar_toggle_btn.clone();
         move |_, _| {
-            let collapsed = sv.is_collapsed();
-            sv.set_collapsed(!collapsed);
-            let icon = if collapsed { "sidebar-show-right-symbolic" } else { "view-list-symbolic" };
+            let shows = sv.shows_content();
+            sv.set_show_content(!shows);
+            let icon = if shows { "sidebar-show-right-symbolic" } else { "view-list-symbolic" };
             btn.set_icon_name(icon);
         }
     });
