@@ -423,33 +423,6 @@ fn setup_layer_shell(window: &gtk::ApplicationWindow, config: &Config) {
 // Widget builders
 // ═══════════════════════════════════════════════════════════════════════
 
-/// Header section: time-of-day greeting and formatted date.
-fn build_header() -> gtk::Box {
-    let container = gtk::Box::new(gtk::Orientation::Vertical, 2);
-    container.add_css_class("header-section");
-
-    let greeting_text = match chrono::Local::now().format("%H").to_string().parse::<u32>() {
-        Ok(h) if h < 5 => "Good Night 🌙",
-        Ok(h) if h < 12 => "Good Morning ☀️",
-        Ok(h) if h < 17 => "Good Afternoon 🌤️",
-        Ok(h) if h < 21 => "Good Evening 🌆",
-        _ => "Good Night 🌙",
-    };
-
-    let greeting = gtk::Label::new(Some(greeting_text));
-    greeting.add_css_class("greeting");
-    greeting.set_halign(gtk::Align::Start);
-
-    let date_str = chrono::Local::now().format("%A, %B %-d").to_string();
-    let date = gtk::Label::new(Some(&date_str));
-    date.add_css_class("date-label");
-    date.set_halign(gtk::Align::Start);
-
-    container.append(&greeting);
-    container.append(&date);
-    container
-}
-
 /// Placeholder shown when the active list has no tasks.
 fn build_empty_state() -> gtk::Box {
     let container = gtk::Box::new(gtk::Orientation::Vertical, 4);
