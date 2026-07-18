@@ -2,6 +2,7 @@ mod config;
 mod db;
 mod style;
 mod window;
+mod commands;
 #[path = "window/editor.rs"]
 mod editor;
 #[path = "window/sidebar.rs"]

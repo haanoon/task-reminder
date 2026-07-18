@@ -5,6 +5,7 @@ use adw::prelude::*;
 use gtk::prelude::*;
 use std::rc::Rc;
 
+#[derive(Clone)]
 pub struct SearchBar {
     container: gtk::Box,
     entry: gtk::SearchEntry,

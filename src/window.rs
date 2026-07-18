@@ -35,6 +35,7 @@ pub struct AppState {
     pub db: Database,
     pub lists: Vec<crate::db::TaskList>,
     pub current_list_idx: usize,
+    pub history: crate::commands::CommandHistory,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -52,6 +53,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         db: db.open_again().expect("Failed to open db connection"),
         lists: lists.clone(),
         current_list_idx: 0,
+        history: crate::commands::CommandHistory::new(),
     }));
 
     // ── Window ────────────────────────────────────────────────────────
@@ -183,14 +185,9 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     main_box.append(search_bar.widget());
 
     search_toggle_btn.connect_clicked({
-        let sb = search_bar.widget().clone();
-        let sb_focus = search_bar;
+        let win = window.clone();
         move |_| {
-            let vis = sb.is_visible();
-            sb.set_visible(!vis);
-            if !vis {
-                sb_focus.grab_focus();
-            }
+            fire_action(&win, "toggle-search");
         }
     });
 
@@ -318,6 +315,65 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         }
     });
     window.add_action(&act_add_task);
+
+    // ── win.undo ──────────────────────────────────────────────────────
+    let act_undo = gio::SimpleAction::new("undo", None);
+    act_undo.connect_activate({
+        let state = state.clone();
+        let win = window.clone();
+        move |_, _| {
+            let mut s = state.borrow_mut();
+            let db = s.db.open_again().unwrap();
+            if let Err(e) = s.history.undo(&db) {
+                log::warn!("Undo failed: {}", e);
+            } else {
+                fire_action(&win, "refresh-tasks");
+                fire_action(&win, "refresh-lists");
+            }
+        }
+    });
+    window.add_action(&act_undo);
+
+    // ── win.redo ──────────────────────────────────────────────────────
+    let act_redo = gio::SimpleAction::new("redo", None);
+    act_redo.connect_activate({
+        let state = state.clone();
+        let win = window.clone();
+        move |_, _| {
+            let mut s = state.borrow_mut();
+            let db = s.db.open_again().unwrap();
+            if let Err(e) = s.history.redo(&db) {
+                log::warn!("Redo failed: {}", e);
+            } else {
+                fire_action(&win, "refresh-tasks");
+                fire_action(&win, "refresh-lists");
+            }
+        }
+    });
+    window.add_action(&act_redo);
+
+    // ── win.toggle-search ─────────────────────────────────────────────
+    let act_toggle_search = gio::SimpleAction::new("toggle-search", None);
+    act_toggle_search.connect_activate({
+        let sb = search_bar.widget().clone();
+        let sb_focus = search_bar.clone();
+        move |_, _| {
+            let vis = sb.is_visible();
+            sb.set_visible(!vis);
+            if !vis {
+                sb_focus.grab_focus();
+            }
+        }
+    });
+    window.add_action(&act_toggle_search);
+
+    // Set accelerators on Application
+    if let Some(app) = window.application() {
+        app.set_accels_for_action("win.undo", &["<Control>z"]);
+        app.set_accels_for_action("win.redo", &["<Control>y"]);
+        app.set_accels_for_action("win.toggle-search", &["<Control>f"]);
+        app.set_accels_for_action("win.show-add-task", &["<Control>n"]);
+    }
 
     // ══════════════════════════════════════════════════════════════════
     // Signal connections
