@@ -235,6 +235,16 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     completed_revealer.set_child(Some(&completed_list_box));
     completed_section.append(&completed_revealer);
 
+    // Toggle the completed tasks section when the button is clicked
+    completed_toggle.connect_clicked({
+        let cr = completed_revealer.clone();
+        let win = window.clone();
+        move |_| {
+            cr.set_reveal_child(!cr.reveals_child());
+            fire_action(&win, "refresh-tasks");
+        }
+    });
+
     task_content.append(&completed_section);
 
     // Empty state
@@ -453,20 +463,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         }
     });
 
-    // ── Window-level Escape → hide the panel
-    window.add_controller({
-        let win = window.clone();
-        let ec = gtk::EventControllerKey::new();
-        ec.connect_key_pressed(move |_, key, _, _| {
-            if key == gdk::Key::Escape {
-                win.set_visible(false);
-                log::info!("Hidden via Escape");
-                return glib::Propagation::Stop;
-            }
-            glib::Propagation::Proceed
-        });
-        ec
-    });
+    // Removed Window-level Escape controller to prevent hiding the app on ESC
 
     // ── Hover-to-reveal: show tasks only when mouse is over the panel —
     window.add_controller({

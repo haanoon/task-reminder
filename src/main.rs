@@ -96,7 +96,8 @@ fn main() {
 /// Load the application CSS and apply it globally.
 fn load_css() {
     let provider = gtk::CssProvider::new();
-    provider.load_from_data(style::CSS);
+    let dynamic_css = style::get_dynamic_css();
+    provider.load_from_data(&dynamic_css);
 
     let display = gdk::Display::default().expect("Could not connect to a display");
     gtk::style_context_add_provider_for_display(
@@ -104,6 +105,25 @@ fn load_css() {
         &provider,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
+
+    // Watch for Pywal color changes and reload automatically
+    if let Some(home) = dirs::home_dir() {
+        let wal_path = home.join(".cache/wal/colors.json");
+        let file = gio::File::for_path(wal_path);
+        
+        if let Ok(monitor) = file.monitor_file(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE) {
+            let provider_clone = provider.clone();
+            monitor.connect_changed(move |_, _, _, event| {
+                if event == gio::FileMonitorEvent::Changed || event == gio::FileMonitorEvent::Created {
+                    log::info!("Wallpaper colors changed, reloading CSS...");
+                    let updated_css = style::get_dynamic_css();
+                    provider_clone.load_from_data(&updated_css);
+                }
+            });
+            // Leak the monitor so it stays alive for the duration of the app
+            Box::leak(Box::new(monitor));
+        }
+    }
 
     log::info!("Loaded application CSS");
 }

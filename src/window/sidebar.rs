@@ -84,6 +84,12 @@ impl Sidebar {
             }
         });
 
+        // Activation Handler (clicking the row, even if already selected)
+        let on_select_clone2 = on_select.clone();
+        list_box.connect_row_activated(move |_, row| {
+            on_select_clone2(row.index() as usize);
+        });
+
         let scroll = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Never)
             .vscrollbar_policy(gtk::PolicyType::Automatic)

@@ -432,3 +432,83 @@ separator {
     margin-top: 6px;
 }
 "#;
+
+pub fn get_dynamic_css() -> String {
+    let mut accent = "#b49ee0".to_string(); // default lavender
+    let mut bg = "#0a0814".to_string();     // default deep purple-black
+    let mut fg = "#ede8f8".to_string();     // default text
+
+    // Try to load Pywal colors from ~/.cache/wal/colors.json
+    if let Some(home) = dirs::home_dir() {
+        let wal_path = home.join(".cache/wal/colors.json");
+        if let Ok(content) = std::fs::read_to_string(wal_path) {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(colors) = val.get("colors") {
+                    if let Some(c) = colors.get("color0").and_then(|v| v.as_str()) {
+                        if !c.is_empty() { bg = c.to_string(); }
+                    }
+                    if let Some(c) = colors.get("color15").and_then(|v| v.as_str()) {
+                        if !c.is_empty() { fg = c.to_string(); }
+                    }
+                    
+                    // Find an accent color. Try color10 first (often nice and bright), then fallback
+                    let accent_candidates = ["color10", "color2", "color3", "color4", "color1", "color5"];
+                    for cand in accent_candidates {
+                        if let Some(c) = colors.get(cand).and_then(|v| v.as_str()) {
+                            if !c.is_empty() {
+                                accent = c.to_string();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Convert hex to rgb for rgba usage
+    let bg_rgb = hex_to_rgb(&bg).unwrap_or((10, 8, 20));
+    let accent_rgb = hex_to_rgb(&accent).unwrap_or((180, 158, 224));
+    
+    // Calculate a slightly lighter background for the panel surface
+    let panel_bg_rgb = (
+        bg_rgb.0.saturating_add(8),
+        bg_rgb.1.saturating_add(6),
+        bg_rgb.2.saturating_add(12),
+    );
+    
+    // Calculate a slightly darker background for the sidebar
+    let sidebar_bg_rgb = (
+        bg_rgb.0.saturating_sub(2),
+        bg_rgb.1.saturating_sub(2),
+        bg_rgb.2.saturating_sub(2),
+    );
+
+    let mut css = CSS.to_string();
+    
+    // Replace default background rgb (10, 8, 20)
+    css = css.replace("10, 8, 20", &format!("{}, {}, {}", bg_rgb.0, bg_rgb.1, bg_rgb.2));
+    // Replace default panel background rgb (18, 14, 32)
+    css = css.replace("18, 14, 32", &format!("{}, {}, {}", panel_bg_rgb.0, panel_bg_rgb.1, panel_bg_rgb.2));
+    // Replace sidebar background rgb (8, 6, 18)
+    css = css.replace("8, 6, 18", &format!("{}, {}, {}", sidebar_bg_rgb.0, sidebar_bg_rgb.1, sidebar_bg_rgb.2));
+    
+    // Replace default accent hex (#b49ee0)
+    css = css.replace("#b49ee0", &accent);
+    // Replace default accent glow rgb (180, 158, 224)
+    css = css.replace("180, 158, 224", &format!("{}, {}, {}", accent_rgb.0, accent_rgb.1, accent_rgb.2));
+    
+    // Replace default primary text hex (#ede8f8)
+    css = css.replace("#ede8f8", &fg);
+
+    css
+}
+
+fn hex_to_rgb(hex: &str) -> Option<(u8, u8, u8)> {
+    let hex = hex.trim_start_matches('#');
+    if hex.len() != 6 { return None; }
+    let r = u8::from_str_radix(&hex[0..2], 16).ok()?;
+    let g = u8::from_str_radix(&hex[2..4], 16).ok()?;
+    let b = u8::from_str_radix(&hex[4..6], 16).ok()?;
+    Some((r, g, b))
+}
