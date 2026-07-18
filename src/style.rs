@@ -256,6 +256,184 @@ window.background {
 /* ══════════════════════════════════════════════════════════════════════
    Scrollbar — thin and translucent
    ══════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════
+   Task Metadata (Notes, Priority, Due Date)
+   ══════════════════════════════════════════════════════════════════════ */
+.task-notes-preview {
+    font-size: 12px;
+    color: #a6adc8;
+    margin-top: 2px;
+}
+
+.task-completed .task-notes-preview {
+    color: rgba(108, 112, 134, 0.40);
+}
+
+.meta-box {
+    margin-top: 4px;
+}
+
+/* Due date chip */
+.due-chip {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #cdd6f4;
+    background-color: rgba(49, 50, 68, 0.5);
+}
+
+.due-chip.overdue {
+    background-color: rgba(243, 139, 168, 0.15);
+    color: #f38ba8;
+    border: 1px solid rgba(243, 139, 168, 0.25);
+}
+
+/* Priority badge */
+.priority-badge {
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.priority-badge.priority-low {
+    background-color: rgba(137, 180, 250, 0.15);
+    color: #89b4fa;
+}
+
+.priority-badge.priority-medium {
+    background-color: rgba(250, 179, 135, 0.15);
+    color: #fab387;
+}
+
+.priority-badge.priority-high {
+    background-color: rgba(243, 139, 168, 0.2);
+    color: #f38ba8;
+    border: 1px solid rgba(243, 139, 168, 0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Task Editor Dialog Styling
+   ══════════════════════════════════════════════════════════════════════ */
+.dim-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #585b70;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.editor-title-entry {
+    padding: 10px;
+    border-radius: 8px;
+    background-color: rgba(49, 50, 68, 0.4);
+    color: #cdd6f4;
+}
+
+.editor-notes-scroll {
+    border-radius: 8px;
+    background-color: rgba(49, 50, 68, 0.4);
+    border: 1px solid rgba(205, 214, 244, 0.05);
+}
+
+.editor-notes-view {
+    padding: 8px;
+    background: transparent;
+    color: #cdd6f4;
+}
+
+.editor-calendar {
+    border-radius: 10px;
+    background-color: rgba(49, 50, 68, 0.3);
+    padding: 6px;
+}
+
+.destructive-action {
+    color: #f38ba8;
+}
+
+.destructive-action:hover {
+    background-color: rgba(243, 139, 168, 0.1);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Sidebar Layout
+   ══════════════════════════════════════════════════════════════════════ */
+.sidebar-container {
+    background-color: rgba(30, 30, 46, 0.95);
+    border-right: 1px solid rgba(205, 214, 244, 0.05);
+}
+
+.sidebar-header-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #cdd6f4;
+}
+
+.sidebar-list {
+    background: transparent;
+}
+
+.sidebar-row-box {
+    padding: 8px 12px;
+}
+
+.sidebar-delete-btn {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    color: #f38ba8;
+    background: transparent;
+}
+
+.sidebar-delete-btn:hover {
+    background-color: rgba(243, 139, 168, 0.1);
+}
+
+.sidebar-add-entry {
+    background-color: rgba(49, 50, 68, 0.4);
+    border-radius: 6px;
+    color: #cdd6f4;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Search Overlay Layout
+   ══════════════════════════════════════════════════════════════════════ */
+.search-container {
+    margin: 8px 16px;
+    padding: 10px;
+    border-radius: 12px;
+    background-color: rgba(30, 30, 46, 0.9);
+    border: 1px solid rgba(137, 180, 250, 0.2);
+}
+
+.search-bar-entry {
+    background-color: rgba(49, 50, 68, 0.5);
+    border-radius: 8px;
+    color: #cdd6f4;
+}
+
+.search-results-list {
+    background: transparent;
+}
+
+.search-result-row {
+    padding: 8px;
+    border-bottom: 1px solid rgba(205, 214, 244, 0.02);
+}
+
+.search-result-row:hover {
+    background-color: rgba(69, 71, 90, 0.2);
+}
+
+.search-result-title {
+    font-size: 13px;
+    color: #cdd6f4;
+}
+
 scrollbar slider {
     background-color: rgba(108, 112, 134, 0.20);
     border-radius: 100px;

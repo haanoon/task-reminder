@@ -2,6 +2,12 @@ mod config;
 mod db;
 mod style;
 mod window;
+#[path = "window/editor.rs"]
+mod editor;
+#[path = "window/sidebar.rs"]
+mod sidebar;
+#[path = "window/search.rs"]
+mod search;
 
 use adw::prelude::*;
 use gtk::{gdk, gio};

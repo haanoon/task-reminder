@@ -49,8 +49,8 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     let lists = db.get_lists().unwrap_or_default();
 
     let state = Rc::new(RefCell::new(AppState {
-        db,
-        lists,
+        db: db.open_again().expect("Failed to open db connection"),
+        lists: lists.clone(),
         current_list_idx: 0,
     }));
 
@@ -63,57 +63,139 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
 
     setup_layer_shell(&window, config);
 
-    // ── Root container ────────────────────────────────────────────────
+    // ── Root container using AdwNavigationSplitView or overlay for sliding sidebar ──
+    let split_view = adw::NavigationSplitView::new();
+    split_view.set_min_sidebar_width(240.0);
+    split_view.set_max_sidebar_width(280.0);
+
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     main_box.add_css_class("main-container");
     main_box.set_vexpand(true);
 
+    // Sidebar creation
+    let sidebar_widget = crate::sidebar::Sidebar::new(
+        Rc::new(db.open_again().unwrap()),
+        lists.clone(),
+        0,
+        {
+            let state = state.clone();
+            let win = window.clone();
+            move |idx| {
+                state.borrow_mut().current_list_idx = idx;
+                fire_action(&win, "refresh-tasks");
+            }
+        },
+        {
+            let state = state.clone();
+            let win = window.clone();
+            move |name| {
+                state.borrow().db.create_list(&name, "📋").ok();
+                fire_action(&win, "refresh-lists");
+            }
+        },
+        {
+            let state = state.clone();
+            let win = window.clone();
+            move |list_id| {
+                state.borrow().db.delete_list(&list_id).ok();
+                fire_action(&win, "refresh-lists");
+            }
+        }
+    );
+
+    let sidebar_nav_page = adw::NavigationPage::new(sidebar_widget.widget(), "Lists");
+    split_view.set_sidebar(Some(&sidebar_nav_page));
+
     // ── Header ────────────────────────────────────────────────────────
-    main_box.append(&build_header());
+    let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    header_box.add_css_class("header-section");
 
-    // ── List tabs ─────────────────────────────────────────────────────
-    let list_tabs_scroll = gtk::ScrolledWindow::builder()
-        .hscrollbar_policy(gtk::PolicyType::Automatic)
-        .vscrollbar_policy(gtk::PolicyType::Never)
-        .build();
-    let list_tabs_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    list_tabs_box.add_css_class("list-tabs");
-    list_tabs_scroll.set_child(Some(&list_tabs_box));
-    main_box.append(&list_tabs_scroll);
+    // Time greeting & date labels
+    let greeting_text = match chrono::Local::now().format("%H").to_string().parse::<u32>() {
+        Ok(h) if h < 5 => "Good Night 🌙",
+        Ok(h) if h < 12 => "Good Morning ☀️",
+        Ok(h) if h < 17 => "Good Afternoon 🌤️",
+        Ok(h) if h < 21 => "Good Evening 🌆",
+        _ => "Good Night 🌙",
+    };
+    let title_vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
+    let greeting = gtk::Label::new(Some(greeting_text));
+    greeting.add_css_class("greeting");
+    greeting.set_halign(gtk::Align::Start);
+    let date_str = chrono::Local::now().format("%A, %B %-d").to_string();
+    let date = gtk::Label::new(Some(&date_str));
+    date.add_css_class("date-label");
+    date.set_halign(gtk::Align::Start);
+    title_vbox.append(&greeting);
+    title_vbox.append(&date);
+    title_vbox.set_hexpand(true);
 
-    // New-list inline entry (initially hidden)
-    let new_list_revealer = gtk::Revealer::builder()
-        .transition_type(gtk::RevealerTransitionType::SlideDown)
-        .transition_duration(150)
-        .reveal_child(false)
-        .build();
-    let new_list_entry = gtk::Entry::builder()
-        .placeholder_text("List name…")
-        .build();
-    new_list_entry.add_css_class("new-list-entry");
-    new_list_revealer.set_child(Some(&new_list_entry));
-    main_box.append(&new_list_revealer);
+    // Sidebar Toggle button
+    let sidebar_toggle_btn = gtk::Button::from_icon_name("sidebar-show-symbolic");
+    sidebar_toggle_btn.set_tooltip_text(Some("Toggle lists"));
+    sidebar_toggle_btn.connect_clicked({
+        let sv = split_view.clone();
+        move |_| {
+            sv.set_collapsed(!sv.is_collapsed());
+        }
+    });
 
-    // ── Separator ─────────────────────────────────────────────────────
-    let sep = gtk::Separator::new(gtk::Orientation::Horizontal);
-    sep.add_css_class("task-separator");
-    main_box.append(&sep);
+    // Search Toggle button
+    let search_toggle_btn = gtk::Button::from_icon_name("system-search-symbolic");
+    search_toggle_btn.set_tooltip_text(Some("Search tasks"));
+
+    header_box.append(&sidebar_toggle_btn);
+    header_box.append(&title_vbox);
+    header_box.append(&search_toggle_btn);
+    main_box.append(&header_box);
+
+    // Search Bar Widget Overlay
+    let state_search = state.clone();
+    let win_search = window.clone();
+    let search_bar = crate::search::SearchBar::new(
+        Rc::new(move || {
+            let s = state_search.borrow();
+            let mut list_tasks = vec![];
+            for l in &s.lists {
+                if let Ok(mut t) = s.db.get_tasks(&l.id, false) {
+                    list_tasks.append(&mut t);
+                }
+                if let Ok(mut t) = s.db.get_tasks(&l.id, true) {
+                    list_tasks.append(&mut t);
+                }
+            }
+            list_tasks
+        }),
+        {
+            let win = win_search.clone();
+            let state = state.clone();
+            move |task| {
+                // Open editor on selected search task
+                let db = Rc::new(state.borrow().db.open_again().unwrap());
+                let win_clone = win.clone();
+                crate::editor::TaskEditor::new(win.upcast_ref(), db, Some(task), move || {
+                    fire_action(&win_clone, "refresh-tasks");
+                    fire_action(&win_clone, "refresh-lists");
+                });
+            }
+        }
+    );
+    main_box.append(search_bar.widget());
+
+    search_toggle_btn.connect_clicked({
+        let sb = search_bar.widget().clone();
+        let sb_focus = search_bar;
+        move |_| {
+            let vis = sb.is_visible();
+            sb.set_visible(!vis);
+            if !vis {
+                sb_focus.grab_focus();
+            }
+        }
+    });
 
     // ── Task content area ─────────────────────────────────────────────
     let task_content = gtk::Box::new(gtk::Orientation::Vertical, 0);
-
-    // Inline add-task entry (initially hidden)
-    let add_task_revealer = gtk::Revealer::builder()
-        .transition_type(gtk::RevealerTransitionType::SlideDown)
-        .transition_duration(150)
-        .reveal_child(false)
-        .build();
-    let add_task_entry = gtk::Entry::builder()
-        .placeholder_text("What needs to be done?")
-        .build();
-    add_task_entry.add_css_class("add-task-entry");
-    add_task_revealer.set_child(Some(&add_task_entry));
-    task_content.append(&add_task_revealer);
 
     // Active tasks ListBox
     let active_list_box = gtk::ListBox::builder()
@@ -172,7 +254,10 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     overlay.add_overlay(&fab);
 
     main_box.append(&overlay);
-    window.set_child(Some(&main_box));
+
+    let content_nav_page = adw::NavigationPage::new(&main_box, "Tasks");
+    split_view.set_content(Some(&content_nav_page));
+    window.set_child(Some(&split_view));
 
     // ══════════════════════════════════════════════════════════════════
     // Actions — decouple widget callbacks from refresh logic
@@ -188,8 +273,9 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         let ct = completed_toggle.clone();
         let cr = completed_revealer.clone();
         let eb = empty_box.clone();
+        let win = window.clone();
         move |_, _| {
-            refresh_task_display(&state, &alb, &clb, &cs, &ct, &cr, &eb);
+            refresh_task_display(&state, &alb, &clb, &cs, &ct, &cr, &eb, &win);
         }
     });
     window.add_action(&act_refresh_tasks);
@@ -198,7 +284,6 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     let act_refresh_lists = gio::SimpleAction::new("refresh-lists", None);
     act_refresh_lists.connect_activate({
         let state = state.clone();
-        let ltb = list_tabs_box.clone();
         let win = window.clone();
         move |_, _| {
             // Reload list data from the database
@@ -209,33 +294,27 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
                     s.current_list_idx = s.lists.len().saturating_sub(1);
                 }
             }
-            refresh_list_tabs(&state, &ltb, &win);
-            // Cascade: also refresh the task view
+            // Trigger refresh lists on sidebar if needed (handled by binding state update)
             fire_action(&win, "refresh-tasks");
         }
     });
     window.add_action(&act_refresh_lists);
 
-    // ── win.show-new-list ─────────────────────────────────────────────
-    let act_new_list = gio::SimpleAction::new("show-new-list", None);
-    act_new_list.connect_activate({
-        let rev = new_list_revealer.clone();
-        let ent = new_list_entry.clone();
-        move |_, _| {
-            rev.set_reveal_child(true);
-            ent.grab_focus();
-        }
-    });
-    window.add_action(&act_new_list);
-
     // ── win.show-add-task ─────────────────────────────────────────────
     let act_add_task = gio::SimpleAction::new("show-add-task", None);
     act_add_task.connect_activate({
-        let rev = add_task_revealer.clone();
-        let ent = add_task_entry.clone();
+        let state = state.clone();
+        let win = window.clone();
         move |_, _| {
-            rev.set_reveal_child(true);
-            ent.grab_focus();
+            let db = Rc::new(state.borrow().db.open_again().unwrap_or_else(|_| {
+                let db_path = Config::database_path();
+                Database::open(&db_path).unwrap()
+            }));
+            let win_clone = win.clone();
+            crate::editor::TaskEditor::new(win.upcast_ref(), db, None, move || {
+                fire_action(&win_clone, "refresh-tasks");
+                fire_action(&win_clone, "refresh-lists");
+            });
         }
     });
     window.add_action(&act_add_task);
@@ -244,7 +323,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     // Signal connections
     // ══════════════════════════════════════════════════════════════════
 
-    // FAB → show add-task entry
+    // FAB → show add-task dialog
     fab.connect_clicked({
         let win = window.clone();
         move |_| {
@@ -252,110 +331,12 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         }
     });
 
-    // Add-task entry → Enter creates a task
-    add_task_entry.connect_activate({
-        let state = state.clone();
-        let rev = add_task_revealer.clone();
-        let ent = add_task_entry.clone();
-        let win = window.clone();
-        move |_| {
-            let title = ent.text().trim().to_string();
-            if title.is_empty() {
-                return;
-            }
-            {
-                let s = state.borrow();
-                if s.lists.is_empty() {
-                    return;
-                }
-                let list_id = &s.lists[s.current_list_idx].id;
-                if let Err(e) = s.db.create_task(list_id, &title) {
-                    log::error!("Failed to create task: {e}");
-                    return;
-                }
-            }
-            ent.set_text("");
-            rev.set_reveal_child(false);
-            fire_action(&win, "refresh-tasks");
-            fire_action(&win, "refresh-lists");
-        }
-    });
-
-    // Add-task entry → Escape cancels
-    add_task_entry.add_controller(escape_controller({
-        let rev = add_task_revealer.clone();
-        let ent = add_task_entry.clone();
-        move || {
-            rev.set_reveal_child(false);
-            ent.set_text("");
-        }
-    }));
-
-    // New-list entry → Enter creates a list
-    new_list_entry.connect_activate({
-        let state = state.clone();
-        let rev = new_list_revealer.clone();
-        let ent = new_list_entry.clone();
-        let win = window.clone();
-        move |_| {
-            let name = ent.text().trim().to_string();
-            if name.is_empty() {
-                return;
-            }
-            // Create list and switch to it
-            let new_idx = {
-                let s = state.borrow();
-                let list_count = s.lists.len();
-                if let Err(e) = s.db.create_list(&name, "📋") {
-                    log::error!("Failed to create list: {e}");
-                    return;
-                }
-                list_count // will be the index after refresh
-            };
-            state.borrow_mut().current_list_idx = new_idx;
-            ent.set_text("");
-            rev.set_reveal_child(false);
-            fire_action(&win, "refresh-lists");
-        }
-    });
-
-    // New-list entry → Escape cancels
-    new_list_entry.add_controller(escape_controller({
-        let rev = new_list_revealer.clone();
-        let ent = new_list_entry.clone();
-        move || {
-            rev.set_reveal_child(false);
-            ent.set_text("");
-        }
-    }));
-
-    // Completed toggle → expand / collapse
-    completed_toggle.connect_clicked({
-        let cr = completed_revealer.clone();
-        let ct = completed_toggle.clone();
-        move |_| {
-            let revealed = cr.reveals_child();
-            cr.set_reveal_child(!revealed);
-            // Swap arrow character in the label
-            if let Some(label) = ct.label() {
-                let new_label = if revealed {
-                    label.replace('▴', "▾")
-                } else {
-                    label.replace('▾', "▴")
-                };
-                ct.set_label(&new_label);
-            }
-        }
-    });
-
-    // Window-level Escape → hide the panel (only when no entry is open)
+    // ── Window-level Escape → hide the panel (only when no entry is open)
     window.add_controller({
         let win = window.clone();
-        let atr = add_task_revealer.clone();
-        let nlr = new_list_revealer.clone();
         let ec = gtk::EventControllerKey::new();
         ec.connect_key_pressed(move |_, key, _, _| {
-            if key == gdk::Key::Escape && !atr.reveals_child() && !nlr.reveals_child() {
+            if key == gdk::Key::Escape {
                 win.set_visible(false);
                 log::info!("Hidden via Escape");
                 return glib::Propagation::Stop;
@@ -368,7 +349,6 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     // ══════════════════════════════════════════════════════════════════
     // Initial render
     // ══════════════════════════════════════════════════════════════════
-    refresh_list_tabs(&state, &list_tabs_box, &window);
     refresh_task_display(
         &state,
         &active_list_box,
@@ -377,6 +357,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         &completed_toggle,
         &completed_revealer,
         &empty_box,
+        &window,
     );
 
     window.present();
@@ -493,10 +474,10 @@ fn build_empty_state() -> gtk::Box {
     container
 }
 
-/// Build a single task row (checkbox · title · delete button).
-fn build_task_row(task: &Task, state: &Rc<RefCell<AppState>>) -> gtk::ListBoxRow {
+/// Build a single task row (checkbox · title/details · delete button).
+fn build_task_row(task: &Task, state: &Rc<RefCell<AppState>>, window: &gtk::ApplicationWindow) -> gtk::ListBoxRow {
     let row = gtk::ListBoxRow::builder()
-        .activatable(false)
+        .activatable(true)
         .selectable(false)
         .build();
 
@@ -509,14 +490,55 @@ fn build_task_row(task: &Task, state: &Rc<RefCell<AppState>>) -> gtk::ListBoxRow
     // ── Checkbox ──────────────────────────────────────────────────────
     let check = gtk::CheckButton::new();
     check.set_active(task.completed);
-    check.set_valign(gtk::Align::Center);
+    check.set_valign(gtk::Align::Start);
+    check.set_margin_top(2);
 
-    // ── Title ─────────────────────────────────────────────────────────
+    // ── Title & Metadata Box ──────────────────────────────────────────
+    let text_vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
+    text_vbox.set_hexpand(true);
+
     let title = gtk::Label::new(Some(&task.title));
     title.add_css_class("task-title");
     title.set_halign(gtk::Align::Start);
-    title.set_hexpand(true);
     title.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    text_vbox.append(&title);
+
+    // Notes preview (first line or truncated text)
+    if !task.notes.is_empty() {
+        let first_line = task.notes.lines().next().unwrap_or("").trim();
+        let notes_lbl = gtk::Label::new(Some(first_line));
+        notes_lbl.add_css_class("task-notes-preview");
+        notes_lbl.set_halign(gtk::Align::Start);
+        notes_lbl.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        text_vbox.append(&notes_lbl);
+    }
+
+    // Chips box (due date, priority)
+    let chips_hbox = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    chips_hbox.add_css_class("meta-box");
+    let mut has_chips = false;
+
+    if let Some(due_text) = task.due_display() {
+        let due_lbl = gtk::Label::new(Some(&due_text));
+        due_lbl.add_css_class("due-chip");
+        if task.is_overdue() {
+            due_lbl.add_css_class("overdue");
+        }
+        chips_hbox.append(&due_lbl);
+        has_chips = true;
+    }
+
+    if task.priority != crate::db::Priority::None {
+        let prio_lbl = gtk::Label::new(Some(task.priority.label()));
+        prio_lbl.add_css_class("priority-badge");
+        prio_lbl.add_css_class(task.priority.css_class());
+        chips_hbox.append(&prio_lbl);
+        has_chips = true;
+    }
+
+    if has_chips {
+        text_vbox.append(&chips_hbox);
+    }
 
     // ── Delete button ─────────────────────────────────────────────────
     let delete_btn = gtk::Button::from_icon_name("edit-delete-symbolic");
@@ -525,7 +547,7 @@ fn build_task_row(task: &Task, state: &Rc<RefCell<AppState>>) -> gtk::ListBoxRow
     delete_btn.set_tooltip_text(Some("Delete task"));
 
     hbox.append(&check);
-    hbox.append(&title);
+    hbox.append(&text_vbox);
     hbox.append(&delete_btn);
     row.set_child(Some(&hbox));
 
@@ -551,6 +573,37 @@ fn build_task_row(task: &Task, state: &Rc<RefCell<AppState>>) -> gtk::ListBoxRow
         });
     }
 
+    // ── Row activation (Edit) ─────────────────────────────────────────
+    {
+        let task_id = task.id.clone();
+        let st = state.clone();
+        let win = window.clone();
+        row.connect_keynav_failed(move |_, _| glib::Propagation::Proceed); // dummy connection to handle activation easily
+        // GtkListBox row-activated signal is handled at the ListBox level usually, but we can also use a gesture on the row.
+        let click_gesture = gtk::GestureClick::new();
+        click_gesture.connect_pressed({
+            let task_id = task_id.clone();
+            let st = st.clone();
+            let win = win.clone();
+            move |_, n_press, _, _| {
+                if n_press == 2 { // Double click to edit
+                    let db = Rc::new(st.borrow().db.open_again().unwrap_or_else(|_| {
+                        let db_path = Config::database_path();
+                        Database::open(&db_path).unwrap()
+                    }));
+                    if let Ok(t) = db.get_task(&task_id) {
+                        let win_clone = win.clone();
+                        crate::editor::TaskEditor::new(win.upcast_ref(), db.clone(), Some(t), move || {
+                            fire_action(&win_clone, "refresh-tasks");
+                            fire_action(&win_clone, "refresh-lists");
+                        });
+                    }
+                }
+            }
+        });
+        row.add_controller(click_gesture);
+    }
+
     row
 }
 
@@ -567,6 +620,7 @@ fn refresh_task_display(
     completed_toggle: &gtk::Button,
     completed_revealer: &gtk::Revealer,
     empty_box: &gtk::Box,
+    window: &gtk::ApplicationWindow,
 ) {
     // Fetch data (borrow kept as short as possible)
     let (active_tasks, completed_tasks) = {
@@ -588,12 +642,12 @@ fn refresh_task_display(
 
     // Populate active tasks
     for task in &active_tasks {
-        active_lb.append(&build_task_row(task, state));
+        active_lb.append(&build_task_row(task, state, window));
     }
 
     // Populate completed tasks
     for task in &completed_tasks {
-        completed_lb.append(&build_task_row(task, state));
+        completed_lb.append(&build_task_row(task, state, window));
     }
 
     // Update completed-section visibility and label
@@ -614,57 +668,7 @@ fn refresh_task_display(
     active_lb.set_visible(!active_tasks.is_empty());
 }
 
-/// Rebuild the horizontal list-tab buttons.
-fn refresh_list_tabs(
-    state: &Rc<RefCell<AppState>>,
-    tabs_box: &gtk::Box,
-    window: &gtk::ApplicationWindow,
-) {
-    // Remove existing buttons
-    while let Some(child) = tabs_box.first_child() {
-        tabs_box.remove(&child);
-    }
 
-    let s = state.borrow();
-    let current = s.current_list_idx;
-
-    for (i, list) in s.lists.iter().enumerate() {
-        let count = s.db.task_count(&list.id).unwrap_or(0);
-        let label = if count > 0 {
-            format!("{} {} ({})", list.icon, list.name, count)
-        } else {
-            format!("{} {}", list.icon, list.name)
-        };
-
-        let btn = gtk::Button::with_label(&label);
-        btn.add_css_class("list-tab");
-        if i == current {
-            btn.add_css_class("active");
-        }
-
-        // Switch list on click
-        let st = state.clone();
-        let win = window.clone();
-        btn.connect_clicked(move |_| {
-            st.borrow_mut().current_list_idx = i;
-            fire_action(&win, "refresh-lists");
-        });
-
-        tabs_box.append(&btn);
-    }
-
-    // + button for new list
-    let add_btn = gtk::Button::from_icon_name("list-add-symbolic");
-    add_btn.add_css_class("add-list-btn");
-    add_btn.set_tooltip_text(Some("New list"));
-    add_btn.connect_clicked({
-        let win = window.clone();
-        move |_| {
-            fire_action(&win, "show-new-list");
-        }
-    });
-    tabs_box.append(&add_btn);
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Utilities
