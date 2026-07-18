@@ -1,9 +1,8 @@
 # Wallpaper Tasks
 
-A task manager that lives on your desktop wallpaper.
+A beautiful, dark-themed task manager built specifically for **Hyprland**. 
 
-## What is this project?
-Wallpaper Tasks is a sleek, lightweight task manager designed to integrate seamlessly into your desktop environment (especially Wayland compositors like Hyprland). It uses GTK4 and Libadwaita to provide a beautiful, dark-themed UI that sits right on your wallpaper, allowing you to manage your tasks without opening heavy standalone applications.
+Instead of opening a heavy standalone app, **Wallpaper Tasks** sits seamlessly over your desktop wallpaper. You can instantly summon or hide it with a single keypress, keeping your workspace clean while keeping your tasks just a keystroke away. Built with GTK4 and Libadwaita for a sleek, premium Wayland experience.
 
 ## How to use this
 Once built and installed, you can launch or toggle the application using the command line:
