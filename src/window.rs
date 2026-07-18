@@ -69,6 +69,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     let split_view = adw::NavigationSplitView::new();
     split_view.set_min_sidebar_width(240.0);
     split_view.set_max_sidebar_width(280.0);
+    split_view.set_collapsed(true); // sidebar hidden by default
 
     let main_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     main_box.add_css_class("main-container");
@@ -133,12 +134,17 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     title_vbox.set_hexpand(true);
 
     // Sidebar Toggle button
-    let sidebar_toggle_btn = gtk::Button::from_icon_name("sidebar-show-symbolic");
-    sidebar_toggle_btn.set_tooltip_text(Some("Toggle lists"));
+    let sidebar_toggle_btn = gtk::Button::from_icon_name("view-list-symbolic");
+    sidebar_toggle_btn.add_css_class("sidebar-toggle");
+    sidebar_toggle_btn.set_tooltip_text(Some("Toggle lists (Ctrl+L)"));
     sidebar_toggle_btn.connect_clicked({
         let sv = split_view.clone();
-        move |_| {
-            sv.set_collapsed(!sv.is_collapsed());
+        move |btn| {
+            let collapsed = sv.is_collapsed();
+            sv.set_collapsed(!collapsed);
+            // Update icon to reflect state
+            let icon = if collapsed { "sidebar-show-right-symbolic" } else { "view-list-symbolic" };
+            btn.set_icon_name(icon);
         }
     });
 
@@ -367,12 +373,27 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     });
     window.add_action(&act_toggle_search);
 
+    // ── win.toggle-sidebar ────────────────────────────────────────────
+    let act_toggle_sidebar = gio::SimpleAction::new("toggle-sidebar", None);
+    act_toggle_sidebar.connect_activate({
+        let sv = split_view.clone();
+        let btn = sidebar_toggle_btn.clone();
+        move |_, _| {
+            let collapsed = sv.is_collapsed();
+            sv.set_collapsed(!collapsed);
+            let icon = if collapsed { "sidebar-show-right-symbolic" } else { "view-list-symbolic" };
+            btn.set_icon_name(icon);
+        }
+    });
+    window.add_action(&act_toggle_sidebar);
+
     // Set accelerators on Application
     if let Some(app) = window.application() {
         app.set_accels_for_action("win.undo", &["<Control>z"]);
         app.set_accels_for_action("win.redo", &["<Control>y"]);
         app.set_accels_for_action("win.toggle-search", &["<Control>f"]);
         app.set_accels_for_action("win.show-add-task", &["<Control>n"]);
+        app.set_accels_for_action("win.toggle-sidebar", &["<Control>l"]);
     }
 
     // ══════════════════════════════════════════════════════════════════

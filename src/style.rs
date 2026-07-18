@@ -1,8 +1,25 @@
-/// Premium Space Obsidian & Electric Cyan Stylesheet.
-/// Uses vibrant glassmorphism, soft glow, and modern typography variables.
+/// Midnight Velvet stylesheet — deep purple-black glassmorphism with
+/// lavender accents, warm text, and refined micro-interactions.
 pub const CSS: &str = r#"
 /* ══════════════════════════════════════════════════════════════════════
-   Window
+   Color palette (conceptual reference — used inline below)
+   --bg-deep:      rgba(10, 8, 20, 0.88)    deep purple-black
+   --bg-panel:     rgba(18, 14, 32, 0.82)   panel surface
+   --bg-elevated:  rgba(28, 22, 48, 0.75)   slightly elevated
+   --border:       rgba(160, 130, 220, 0.12) soft violet border
+   --border-focus: rgba(180, 155, 235, 0.45) focused border
+   --accent:       #b49ee0                   lavender
+   --accent-glow:  rgba(180, 158, 224, 0.25) accent glow
+   --text-primary: #ede8f8                   near-white with violet tint
+   --text-muted:   #8878a8                   muted lavender-gray
+   --text-dim:     #5c5478                   dim text
+   --success:      #82c8a0                   soft sage green
+   --danger:       #d08898                   muted rose
+   --warn:         #c8a86e                   warm amber
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════
+   Window — fully transparent host
    ══════════════════════════════════════════════════════════════════════ */
 window,
 window.background {
@@ -10,248 +27,384 @@ window.background {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Main Glass Container
+   Main Glass Panel
    ══════════════════════════════════════════════════════════════════════ */
 .main-container {
-    background-color: rgba(17, 17, 27, 0.78);
-    border-radius: 24px;
-    border: 1px solid rgba(137, 220, 235, 0.15);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    background-color: rgba(10, 8, 20, 0.88);
+    border-radius: 20px;
+    border: 1px solid rgba(160, 130, 220, 0.12);
+    box-shadow:
+        0 4px 40px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Header (Greeting + Date)
+   Header
    ══════════════════════════════════════════════════════════════════════ */
 .header-section {
-    padding: 30px 24px 16px 24px;
+    padding: 24px 20px 14px 20px;
 }
 
 .greeting {
-    font-size: 26px;
-    font-weight: 800;
-    color: #89dceb; /* Electric Cyan */
-    text-shadow: 0 0 10px rgba(137, 220, 235, 0.3);
+    font-size: 23px;
+    font-weight: 700;
+    color: #ede8f8;
+    letter-spacing: -0.3px;
 }
 
 .date-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #a6adc8;
-    margin-top: 4px;
-    letter-spacing: 0.3px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #7868a0;
+    margin-top: 3px;
+    letter-spacing: 0.2px;
+}
+
+/* ── Sidebar Toggle & Search Icon Buttons ── */
+.sidebar-toggle,
+button.image-button {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+    border-radius: 10px;
+    background-color: rgba(160, 130, 220, 0.07);
+    border: 1px solid rgba(160, 130, 220, 0.1);
+    color: #9888c8;
+    transition: all 180ms ease;
+}
+
+.sidebar-toggle:hover,
+button.image-button:hover {
+    background-color: rgba(160, 130, 220, 0.14);
+    border-color: rgba(180, 155, 235, 0.25);
+    color: #c0aae8;
+}
+
+.sidebar-toggle:active,
+button.image-button:active {
+    background-color: rgba(160, 130, 220, 0.22);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Sidebar navigation split view
+   Sidebar
    ══════════════════════════════════════════════════════════════════════ */
 .sidebar-container {
-    background-color: rgba(10, 10, 15, 0.92);
-    border-right: 1px solid rgba(137, 220, 235, 0.1);
+    background-color: rgba(8, 6, 18, 0.94);
+    border-right: 1px solid rgba(160, 130, 220, 0.1);
 }
 
 .sidebar-header-title {
-    font-size: 15px;
+    font-size: 10px;
     font-weight: 800;
-    color: #89dceb;
+    color: #7868a0;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 1.2px;
+}
+
+.sidebar-list {
+    background: transparent;
+}
+
+.sidebar-list row {
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: transparent;
 }
 
 .sidebar-row-box {
-    padding: 10px 14px;
-    border-radius: 8px;
-    transition: all 150ms ease;
+    padding: 9px 10px;
+    border-radius: 10px;
+    transition: background-color 150ms ease;
+}
+
+.sidebar-list row:selected .sidebar-row-box,
+.sidebar-list row:selected {
+    background-color: rgba(160, 130, 220, 0.15);
 }
 
 .sidebar-row-box:hover {
-    background-color: rgba(137, 220, 235, 0.08);
+    background-color: rgba(160, 130, 220, 0.08);
 }
 
 .sidebar-add-entry {
-    background-color: rgba(30, 30, 46, 0.6);
-    border: 1px solid rgba(137, 220, 235, 0.2);
+    background-color: rgba(28, 22, 48, 0.7);
+    border: 1px solid rgba(160, 130, 220, 0.18);
     border-radius: 8px;
-    color: #cdd6f4;
+    color: #c8bee8;
     padding: 6px 10px;
+    transition: border-color 180ms ease;
 }
 
 .sidebar-add-entry:focus {
-    border-color: #89dceb;
+    border-color: rgba(180, 155, 235, 0.5);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
    Task List
    ══════════════════════════════════════════════════════════════════════ */
-.task-list row {
-    padding: 4px;
-    margin: 2px 10px;
-    border-radius: 14px;
+.task-list {
     background: transparent;
-    transition: all 200ms ease;
+}
+
+.task-list row {
+    padding: 2px 8px;
+    margin: 1px 0;
+    border-radius: 12px;
+    background: transparent;
+    transition: background-color 160ms ease;
 }
 
 .task-list row:hover {
-    background-color: rgba(137, 220, 235, 0.05);
+    background-color: rgba(160, 130, 220, 0.06);
 }
 
 .task-row-box {
-    padding: 12px 16px;
+    padding: 10px 14px;
 }
 
+/* ── Task Title ── */
 .task-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
-    color: #cdd6f4;
+    color: #ede8f8;
+    letter-spacing: -0.1px;
 }
 
+.task-notes-preview {
+    font-size: 12px;
+    color: #7868a0;
+    margin-top: 2px;
+}
+
+/* ── Completed state ── */
 .task-completed .task-title {
     text-decoration: line-through;
-    color: rgba(180, 190, 254, 0.45); /* Soft Lavender Grey completed state */
+    color: #5c5478;
+}
+
+.task-completed .task-notes-preview {
+    color: #483c60;
+}
+
+/* ── Checkbutton ── */
+checkbutton check {
+    min-width: 18px;
+    min-height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(160, 130, 220, 0.35);
+    background-color: transparent;
+    transition: all 200ms ease;
+}
+
+checkbutton:checked check {
+    background-color: #b49ee0;
+    border-color: #b49ee0;
 }
 
 /* ── Delete Button ── */
 .task-delete {
-    min-width: 30px;
-    min-height: 30px;
+    min-width: 28px;
+    min-height: 28px;
     padding: 0;
     border-radius: 8px;
-    color: #f38ba8; /* Pastel Hot Pink */
+    color: #d08898;
     background: transparent;
+    border: none;
     opacity: 0;
-    transition: all 200ms ease;
+    transition: all 180ms ease;
 }
 
 .task-list row:hover .task-delete {
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
 .task-delete:hover {
-    opacity: 1;
-    background-color: rgba(243, 139, 168, 0.15);
+    opacity: 1 !important;
+    background-color: rgba(208, 136, 152, 0.12);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
    Chips & Badges
    ══════════════════════════════════════════════════════════════════════ */
+.meta-box {
+    margin-top: 4px;
+}
+
 .due-chip {
-    padding: 2px 8px;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 700;
-    color: #89dceb;
-    background-color: rgba(137, 220, 235, 0.1);
+    padding: 1px 7px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #9888c8;
+    background-color: rgba(152, 136, 200, 0.12);
 }
 
 .due-chip.overdue {
-    background-color: rgba(243, 139, 168, 0.12);
-    color: #f38ba8;
-    border: 1px solid rgba(243, 139, 168, 0.2);
+    background-color: rgba(208, 136, 152, 0.14);
+    color: #d08898;
+    border: 1px solid rgba(208, 136, 152, 0.22);
 }
 
 .priority-badge {
-    padding: 2px 8px;
-    border-radius: 8px;
+    padding: 1px 7px;
+    border-radius: 6px;
     font-size: 10px;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .priority-badge.priority-low {
-    background-color: rgba(180, 190, 254, 0.15);
-    color: #b4befe;
+    background-color: rgba(130, 200, 160, 0.1);
+    color: #82c8a0;
 }
 
 .priority-badge.priority-medium {
-    background-color: rgba(250, 179, 135, 0.15);
-    color: #fab387;
+    background-color: rgba(200, 168, 110, 0.12);
+    color: #c8a86e;
 }
 
 .priority-badge.priority-high {
-    background-color: rgba(243, 139, 168, 0.2);
-    color: #f38ba8;
-    border: 1px solid rgba(243, 139, 168, 0.3);
+    background-color: rgba(208, 136, 152, 0.14);
+    color: #d08898;
+    border: 1px solid rgba(208, 136, 152, 0.22);
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Search Overlay
+   Search Bar
    ══════════════════════════════════════════════════════════════════════ */
 .search-container {
-    margin: 8px 16px;
-    padding: 12px;
-    border-radius: 16px;
-    background-color: rgba(24, 24, 37, 0.95);
-    border: 1px solid rgba(137, 220, 235, 0.25);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    margin: 6px 12px;
+    padding: 10px;
+    border-radius: 14px;
+    background-color: rgba(18, 14, 32, 0.96);
+    border: 1px solid rgba(160, 130, 220, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 .search-bar-entry {
-    background-color: rgba(17, 17, 27, 0.6);
+    background-color: rgba(10, 8, 20, 0.6);
     border-radius: 8px;
-    color: #cdd6f4;
+    color: #ede8f8;
+    border: 1px solid rgba(160, 130, 220, 0.15);
+    padding: 6px 10px;
+    transition: border-color 180ms ease;
+}
+
+.search-bar-entry:focus {
+    border-color: rgba(180, 155, 235, 0.45);
+}
+
+.search-result-row {
+    padding: 4px 0;
+    border-radius: 8px;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
    FAB (Floating Action Button)
    ══════════════════════════════════════════════════════════════════════ */
 .fab {
-    min-width: 54px;
-    min-height: 54px;
-    border-radius: 18px;
-    background-color: #89dceb;
-    color: #11111b;
-    box-shadow: 0 8px 24px rgba(137, 220, 235, 0.35);
-    transition: all 250ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    min-width: 50px;
+    min-height: 50px;
+    border-radius: 16px;
+    background-color: #b49ee0;
+    color: #0e0820;
+    border: none;
+    box-shadow:
+        0 6px 20px rgba(180, 158, 224, 0.35),
+        0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: all 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .fab:hover {
-    background-color: #a6e3a1; /* Pastel Green on hover */
-    box-shadow: 0 10px 28px rgba(166, 227, 161, 0.45);
-    transform: scale(1.05);
+    background-color: #c8b4f0;
+    box-shadow:
+        0 8px 26px rgba(200, 180, 240, 0.45),
+        0 2px 8px rgba(0, 0, 0, 0.35);
+    transform: scale(1.06);
 }
 
 .fab:active {
-    transform: scale(0.95);
+    transform: scale(0.94);
+    transition-duration: 100ms;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   Completed Toggle Section
+   Completed Tasks Section Toggle
    ══════════════════════════════════════════════════════════════════════ */
 .completed-toggle {
-    padding: 12px 24px;
-    font-size: 12px;
-    font-weight: 800;
-    color: #b4befe;
-    letter-spacing: 0.5px;
+    padding: 10px 22px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #5c5478;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
     background: transparent;
-    transition: color 200ms ease;
+    border: none;
+    transition: color 180ms ease;
 }
 
 .completed-toggle:hover {
-    color: #89dceb;
+    color: #9888c8;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
    Empty State
    ══════════════════════════════════════════════════════════════════════ */
 .empty-state {
-    padding: 56px 24px;
+    padding: 48px 24px;
 }
 
 .empty-icon {
-    font-size: 44px;
-    margin-bottom: 16px;
-    opacity: 0.7;
+    font-size: 38px;
+    margin-bottom: 14px;
+    opacity: 0.45;
 }
 
 .empty-title {
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 700;
-    color: #89dceb;
+    color: #5c5478;
 }
 
 .empty-subtitle {
+    font-size: 12px;
+    color: #3e3458;
+    margin-top: 5px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Task Editor Dialog
+   ══════════════════════════════════════════════════════════════════════ */
+.editor-title-entry {
+    font-size: 15px;
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.editor-notes-scroll {
+    border-radius: 8px;
+    border: 1px solid rgba(160, 130, 220, 0.15);
+    background-color: rgba(10, 8, 20, 0.5);
+}
+
+.editor-notes-view {
+    background-color: transparent;
+    color: #c8bee8;
     font-size: 13px;
-    color: #a6adc8;
-    margin-top: 6px;
+    padding: 8px;
+}
+
+.editor-calendar {
+    border-radius: 10px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Separator
+   ══════════════════════════════════════════════════════════════════════ */
+separator {
+    background-color: rgba(160, 130, 220, 0.08);
+    min-height: 1px;
+    margin: 0 12px;
 }
 "#;
