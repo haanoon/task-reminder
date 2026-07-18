@@ -1,1 +1,0 @@
-/home/hanoon/projects/tasks/target/debug/wallpaper-tasks: /home/hanoon/projects/tasks/src/config.rs /home/hanoon/projects/tasks/src/db.rs /home/hanoon/projects/tasks/src/main.rs /home/hanoon/projects/tasks/src/style.rs /home/hanoon/projects/tasks/src/window.rs
