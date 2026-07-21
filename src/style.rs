@@ -48,6 +48,7 @@ window.background {
     font-weight: 700;
     color: #ede8f8;
     letter-spacing: -0.3px;
+    font-family: "Noto Sans", "Noto Color Emoji", sans-serif;
 }
 
 .date-label {
@@ -158,6 +159,24 @@ button.image-button:active {
 
 .task-row-box {
     padding: 10px 14px;
+}
+
+/* ── Drag Handle ── */
+.drag-handle {
+    opacity: 0;
+    color: #5c5478;
+    min-width: 18px;
+    transition: opacity 150ms ease;
+}
+
+.task-list row:hover .drag-handle {
+    opacity: 0.5;
+}
+
+/* Visual feedback while a row is being dragged over */
+.task-list row.drag-over {
+    background-color: rgba(160, 130, 220, 0.12);
+    border-radius: 12px;
 }
 
 /* ── Task Title ── */
