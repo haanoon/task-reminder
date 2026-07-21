@@ -21,6 +21,7 @@
 
 use crate::config::Config;
 use crate::db::{Database, Task};
+use chrono::Timelike;
 use gtk::prelude::*;
 use gtk::{gdk, gio, glib};
 use std::cell::RefCell;
@@ -36,6 +37,7 @@ pub struct AppState {
     pub lists: Vec<crate::db::TaskList>,
     pub current_list_idx: usize,
     pub history: crate::commands::CommandHistory,
+    pub is_dragging: bool,
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -54,6 +56,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         lists: lists.clone(),
         current_list_idx: 0,
         history: crate::commands::CommandHistory::new(),
+        is_dragging: false,
     }));
 
     // ── Window ────────────────────────────────────────────────────────
@@ -116,25 +119,44 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     let header_box = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     header_box.add_css_class("header-section");
 
-    // Time greeting & date labels
-    let greeting_text = match chrono::Local::now().format("%H").to_string().parse::<u32>() {
-        Ok(h) if h < 5 => "Good Night 🌙",
-        Ok(h) if h < 12 => "Good Morning ☀️",
-        Ok(h) if h < 17 => "Good Afternoon 🌤️",
-        Ok(h) if h < 21 => "Good Evening 🌆",
-        _ => "Good Night 🌙",
-    };
+    // Time greeting & date labels (with auto-update)
     let title_vbox = gtk::Box::new(gtk::Orientation::Vertical, 2);
-    let greeting = gtk::Label::new(Some(greeting_text));
+    let greeting = gtk::Label::new(None);
     greeting.add_css_class("greeting");
     greeting.set_halign(gtk::Align::Start);
-    let date_str = chrono::Local::now().format("%A, %B %-d").to_string();
-    let date = gtk::Label::new(Some(&date_str));
+    let date = gtk::Label::new(None);
     date.add_css_class("date-label");
     date.set_halign(gtk::Align::Start);
     title_vbox.append(&greeting);
     title_vbox.append(&date);
     title_vbox.set_hexpand(true);
+
+    // Function to update greeting and date
+    let update_greeting = {
+        let greeting = greeting.clone();
+        let date = date.clone();
+        move || {
+            let now = chrono::Local::now();
+            let hour = now.hour();
+            let greeting_text = match hour {
+                0..=4 => "Good Night 🌙",
+                5..=11 => "Good Morning ☀️",
+                12..=16 => "Good Afternoon 🌤️",
+                17..=20 => "Good Evening 🌆",
+                _ => "Good Night 🌙",
+            };
+            greeting.set_markup(greeting_text);
+            let date_str = now.format("%A, %B %-d").to_string();
+            date.set_text(&date_str);
+            glib::ControlFlow::Continue
+        }
+    };
+
+    // Initial update
+    update_greeting();
+
+    // Update every minute
+    glib::timeout_add_seconds_local(60, update_greeting);
 
     // Sidebar Toggle button
     let sidebar_toggle_btn = gtk::Button::from_icon_name("view-list-symbolic");
@@ -212,6 +234,7 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
         .selection_mode(gtk::SelectionMode::None)
         .build();
     active_list_box.add_css_class("task-list");
+    // Enable row reordering for DnD
     task_content.append(&active_list_box);
 
     // Completed section
@@ -476,9 +499,12 @@ pub fn build_ui(app: &adw::Application, config: &Config) {
     });
     window.add_controller({
         let stack = content_stack.clone();
+        let state_hover = state.clone();
         let mc = gtk::EventControllerMotion::new();
         mc.connect_leave(move |_| {
-            stack.set_visible_child_name("privacy");
+            if !state_hover.borrow().is_dragging {
+                stack.set_visible_child_name("privacy");
+            }
         });
         mc
     });
@@ -620,6 +646,38 @@ fn build_task_row(task: &Task, state: &Rc<RefCell<AppState>>, window: &gtk::Appl
         hbox.add_css_class("task-completed");
     }
 
+    // ── Drag Handle ───────────────────────────────────────────────────
+    let drag_handle = gtk::Image::from_icon_name("drag-handle-symbolic");
+    drag_handle.add_css_class("drag-handle");
+    drag_handle.set_valign(gtk::Align::Center);
+    
+    if !task.completed {
+        let drag_src = gtk::DragSource::new();
+        drag_src.set_actions(gdk::DragAction::MOVE);
+        let task_id_for_drag = task.id.clone();
+        drag_src.connect_prepare(move |src, _, _| {
+            let value = task_id_for_drag.to_value();
+            src.set_content(Some(&gdk::ContentProvider::for_value(&value)));
+            Some(gdk::ContentProvider::for_value(&value))
+        });
+        let st_begin = state.clone();
+        drag_src.connect_drag_begin(move |_, _| {
+            st_begin.borrow_mut().is_dragging = true;
+        });
+        let st_end = state.clone();
+        drag_src.connect_drag_end(move |_, _, _| {
+            st_end.borrow_mut().is_dragging = false;
+        });
+        let st_cancel = state.clone();
+        drag_src.connect_drag_cancel(move |_, _, _| {
+            st_cancel.borrow_mut().is_dragging = false;
+            false
+        });
+        drag_handle.add_controller(drag_src);
+    }
+    
+    hbox.append(&drag_handle);
+
     // ── Checkbox ──────────────────────────────────────────────────────
     let check = gtk::CheckButton::new();
     check.set_active(task.completed);
@@ -737,6 +795,52 @@ fn build_task_row(task: &Task, state: &Rc<RefCell<AppState>>, window: &gtk::Appl
         row.add_controller(click_gesture);
     }
 
+    // ── Drag and Drop Reordering ──────────────────────────────────────
+    if !task.completed {
+
+        let drop_target = gtk::DropTarget::new(glib::Type::STRING, gdk::DragAction::MOVE);
+        let row_ref = row.clone();
+        
+        let row_ref_enter = row.clone();
+        drop_target.connect_enter(move |_, _, _| {
+            row_ref_enter.add_css_class("drag-over");
+            gdk::DragAction::MOVE
+        });
+        
+        let row_ref_leave = row.clone();
+        drop_target.connect_leave(move |_| {
+            row_ref_leave.remove_css_class("drag-over");
+        });
+
+        let state_clone = state.clone();
+        let win_clone = window.clone();
+        drop_target.connect_drop(move |_, value, _, _| {
+            row_ref.remove_css_class("drag-over");
+            let dragged_id = value.get::<String>().unwrap_or_default();
+            let target_idx = row_ref.index() as usize;
+            
+            let s = state_clone.borrow();
+            if s.lists.is_empty() { return false; }
+            let list_id = &s.lists[s.current_list_idx].id;
+            
+            if let Ok(mut tasks) = s.db.get_tasks(list_id, false) {
+                tasks.retain(|t| t.id != dragged_id);
+                if let Ok(dragged_task) = s.db.get_task(&dragged_id) {
+                    if !dragged_task.completed {
+                        let insert_at = target_idx.min(tasks.len());
+                        tasks.insert(insert_at, dragged_task);
+                        let ordered_ids: Vec<String> = tasks.iter().map(|t| t.id.clone()).collect();
+                        s.db.reorder_tasks(&ordered_ids).ok();
+                        drop(s);
+                        fire_action(&win_clone, "refresh-tasks");
+                    }
+                }
+            }
+            true
+        });
+        row.add_controller(drop_target);
+    }
+    
     row
 }
 
