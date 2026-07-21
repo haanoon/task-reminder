@@ -430,4 +430,24 @@ impl Database {
         )?;
         Ok(count)
     }
+
+    /// Update the position of a single task.
+    /// Called in a batch loop when reordering.
+    pub fn update_task_position(&self, task_id: &str, new_position: i32) -> Result<()> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE tasks SET position = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![new_position, &now, task_id],
+        )?;
+        Ok(())
+    }
+
+    /// Reorder all tasks in a list by a new ID order.
+    /// `ordered_ids` is the full list of task IDs in their desired order, index 0 = top.
+    pub fn reorder_tasks(&self, ordered_ids: &[String]) -> Result<()> {
+        for (i, id) in ordered_ids.iter().enumerate() {
+            self.update_task_position(id, i as i32)?;
+        }
+        Ok(())
+    }
 }
